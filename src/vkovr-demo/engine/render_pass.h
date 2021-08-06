@@ -23,6 +23,7 @@ public:
   operator vk::RenderPass () const { return renderPass_; }
 
   auto getFormat() const { return format_; }
+  auto getDepthFormat() const { return depthFormat_; }
   auto getSamples() const { return samples_; }
 
   void destroy();
@@ -31,6 +32,7 @@ private:
   vk::Device device_;
 
   vk::Format format_;
+  vk::Format depthFormat_;
   vk::SampleCountFlagBits samples_;
   vk::ImageLayout finalLayout_;
   vk::RenderPass renderPass_;

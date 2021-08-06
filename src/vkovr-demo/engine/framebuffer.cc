@@ -12,6 +12,7 @@ Framebuffer createFramebuffer(const FramebufferCreateInfo& createInfo)
   const auto device = createInfo.device;
   auto& renderPass = *createInfo.pRenderPass;
   const auto imageFormat = renderPass.getFormat();
+  const auto depthFormat = renderPass.getDepthFormat();
   const auto samples = renderPass.getSamples();
   const auto& colorImageViews = createInfo.colorImageViews;
   const auto& depthImageViews = createInfo.depthImageViews;
@@ -62,7 +63,7 @@ Framebuffer createFramebuffer(const FramebufferCreateInfo& createInfo)
 
     imageCreateInfo
       .setImageType(vk::ImageType::e2D)
-      .setFormat(vk::Format::eD24UnormS8Uint)
+      .setFormat(depthFormat)
       .setExtent(vk::Extent3D{ maxWidth, maxHeight, 1 })
       .setMipLevels(1)
       .setArrayLayers(1)
@@ -83,7 +84,7 @@ Framebuffer createFramebuffer(const FramebufferCreateInfo& createInfo)
     imageViewCreateInfo
       .setImage(depthImage)
       .setViewType(vk::ImageViewType::e2D)
-      .setFormat(vk::Format::eD24UnormS8Uint)
+      .setFormat(depthFormat)
       .setSubresourceRange({ vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1 });
     depthImageView = device.createImageView(imageViewCreateInfo);
   }

@@ -8,6 +8,7 @@ RenderPass createRenderPass(const RenderPassCreateInfo& createInfo)
 {
   const auto device = createInfo.device;
   const auto format = createInfo.format;
+  const auto depthFormat = vk::Format::eD24UnormS8Uint;
   const auto samples = createInfo.samples;
   const auto finalLayout = createInfo.finalLayout;
 
@@ -31,7 +32,7 @@ RenderPass createRenderPass(const RenderPassCreateInfo& createInfo)
       .setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
     attachments[1]
-      .setFormat(vk::Format::eD24UnormS8Uint)
+      .setFormat(depthFormat)
       .setSamples(samples)
       .setLoadOp(vk::AttachmentLoadOp::eClear)
       .setStoreOp(vk::AttachmentStoreOp::eDontCare)
@@ -85,7 +86,7 @@ RenderPass createRenderPass(const RenderPassCreateInfo& createInfo)
       .setFinalLayout(finalLayout);
 
     attachments[1]
-      .setFormat(vk::Format::eD24UnormS8Uint)
+      .setFormat(depthFormat)
       .setSamples(vk::SampleCountFlagBits::e1)
       .setLoadOp(vk::AttachmentLoadOp::eClear)
       .setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -131,6 +132,7 @@ RenderPass createRenderPass(const RenderPassCreateInfo& createInfo)
   RenderPass result;
   result.device_ = device;
   result.format_ = format;
+  result.depthFormat_ = depthFormat;
   result.samples_ = samples;
   result.finalLayout_ = finalLayout;
   result.renderPass_ = renderPass;
