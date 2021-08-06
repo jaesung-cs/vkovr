@@ -622,8 +622,6 @@ void Engine::drawFrame()
   objectModel[0][0] = scale;
   objectModel[1][1] = scale;
   objectModel[2][2] = scale;
-  objectModel[3][1] = 1.f;
-  objectModel[3][2] = 1.f;
 
   // Check ovr session
   if (session_.opened() && session_.getStatus().ShouldQuit)
@@ -796,14 +794,20 @@ void Engine::drawFrame()
 
       // Average eye quaternions
       glm::quat qs{ 0.f, 0.f, 0.f, 0.f };
+      glm::vec3 ps{ 0.f, 0.f, 0.f };
       for (const auto eye : { ovrEye_Left, ovrEye_Right })
       {
         const auto& ovrQuat = eyePoses[eye].Orientation;
         glm::quat q{ ovrQuat.w, ovrQuat.x, ovrQuat.y, ovrQuat.z };
         q = coordinateSystemOrientation * q;
         qs += q;
+
+        const auto& ovrPosition = eyePoses[eye].Position;
+        glm::vec3 p{ ovrPosition.x, ovrPosition.y, ovrPosition.z };
+        ps += p;
       }
       qs = glm::normalize(qs);
+      ps = ps / 2.f;
 
       glm::vec3 v = qs * glm::vec3{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f };
       glm::vec3 z = qs * glm::vec3{ 0.f, 0.f, 1.f };
@@ -813,6 +817,9 @@ void Engine::drawFrame()
       objectOrientation_ = glm::normalize(objectOrientation_ + dq * dt);
 
       objectModel = objectModel * glm::mat4{ objectOrientation_ };
+      objectModel[3][0] = ps.x;
+      objectModel[3][1] = ps.y + 1.f;
+      objectModel[3][2] = ps.z;
     }
 
     if (status.IsVisible)
