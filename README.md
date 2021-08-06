@@ -1,2 +1,2 @@
 # vkovr
-My Vulkan and VR engine
+my vulkan and oculus vr engine
