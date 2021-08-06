@@ -773,21 +773,7 @@ void Engine::drawFrame()
     coordinateSystem[2][1] = -1.f;
     coordinateSystem[3][3] = 1.f;
 
-    const auto status = session_.getStatus();
-    if (status.HasInputFocus)
-    {
-      const auto input = session_.getInputState();
-
-      // TODO: currently rotates around (0, 0, 1) in body frame. around view direction?
-      glm::vec3 v{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f };
-      glm::vec3 z{ 0.f, 0.f, 1.f };
-      glm::vec3 w{ glm::cross(z, v) };
-      glm::quat dq = 0.5f * glm::quat{ 0.f, w } * objectOrientation_;
-      constexpr float dt = 1.f / 72.f; // TODO
-      objectOrientation_ = glm::normalize(objectOrientation_ + dq * dt);
-
-      objectModel = objectModel * glm::mat4{ objectOrientation_ };
-    }
+    glm::quat coordinateSystemOrientation{ coordinateSystem };
 
     const auto eyePoses = session_.getEyePoses();
     for (int i = 0; i < 2; i++)
@@ -801,6 +787,32 @@ void Engine::drawFrame()
       models[i] = glm::mat3{ q };
       models[i][3] = { p, 1.f };
       models[i] = coordinateSystem * models[i];
+    }
+
+    const auto status = session_.getStatus();
+    if (status.HasInputFocus)
+    {
+      const auto input = session_.getInputState();
+
+      // Average eye quaternions
+      glm::quat qs{ 0.f, 0.f, 0.f, 0.f };
+      for (const auto eye : { ovrEye_Left, ovrEye_Right })
+      {
+        const auto& ovrQuat = eyePoses[eye].Orientation;
+        glm::quat q{ ovrQuat.w, ovrQuat.x, ovrQuat.y, ovrQuat.z };
+        q = coordinateSystemOrientation * q;
+        qs += q;
+      }
+      qs = glm::normalize(qs);
+
+      glm::vec3 v = qs * glm::vec3{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f };
+      glm::vec3 z = qs * glm::vec3{ 0.f, 0.f, 1.f };
+      glm::vec3 w{ glm::cross(z, v) };
+      glm::quat dq = 0.5f * glm::quat{ 0.f, w } * objectOrientation_;
+      constexpr float dt = 1.f / 72.f; // TODO
+      objectOrientation_ = glm::normalize(objectOrientation_ + dq * dt);
+
+      objectModel = objectModel * glm::mat4{ objectOrientation_ };
     }
 
     if (status.IsVisible)
@@ -840,7 +852,6 @@ void Engine::drawFrame()
         const glm::vec3 forward = glm::mat3{ coordinateSystem } * -rot[2];
         const glm::vec3 up = glm::mat3{ coordinateSystem } * rot[1];
 
-        // TODO: eye position to world coordinate system
         const auto& eyePosition = eyePoses[eye].Position;
         auto eyeVec = glm::vec3{ eyePosition.x, eyePosition.y, eyePosition.z };
         camera.eye = glm::vec3{ coordinateSystem * glm::vec4{eyeVec, 1.f} };
