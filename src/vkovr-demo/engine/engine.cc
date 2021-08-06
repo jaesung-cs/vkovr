@@ -776,12 +776,17 @@ void Engine::drawFrame()
     const auto status = session_.getStatus();
     if (status.HasInputFocus)
     {
-      // TODO: handle input
-      /*
       const auto input = session_.getInputState();
-      std::cout << "Has input focus" << std::endl
-        << "  Button: " << input.Buttons << ", touch: " << input.Touches << std::endl;
-        */
+
+      // TODO: currently rotates around (0, 0, 1) in body frame. around view direction?
+      glm::vec3 v{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f };
+      glm::vec3 z{ 0.f, 0.f, 1.f };
+      glm::vec3 w{ glm::cross(z, v) };
+      glm::quat dq = 0.5f * glm::quat{ 0.f, w } * objectOrientation_;
+      constexpr float dt = 1.f / 72.f; // TODO
+      objectOrientation_ = glm::normalize(objectOrientation_ + dq * dt);
+
+      objectModel = objectModel * glm::mat4{ objectOrientation_ };
     }
 
     const auto eyePoses = session_.getEyePoses();

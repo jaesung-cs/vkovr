@@ -3,6 +3,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <glm/gtx/quaternion.hpp>
+
 #include <vkovr/vkovr.hpp>
 
 #include <vkovr-demo/engine/memory_pool.h>
@@ -122,6 +124,9 @@ private:
   vk::Buffer meshBuffer_;
   vk::DeviceSize meshIndexOffset_ = 0;
   uint32_t meshIndexCount_ = 0;
+
+  // VR object orientation
+  glm::quat objectOrientation_{ 1.f, 0.f, 0.f, 0.f };
 
   // Texture
   Texture texture_;
