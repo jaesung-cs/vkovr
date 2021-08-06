@@ -804,6 +804,7 @@ void Engine::drawFrame()
 
         const auto& ovrPosition = eyePoses[eye].Position;
         glm::vec3 p{ ovrPosition.x, ovrPosition.y, ovrPosition.z };
+        p = coordinateSystem * glm::vec4{ p, 1.f };
         ps += p;
       }
       qs = glm::normalize(qs);
