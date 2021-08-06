@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{63d6390f-50e8-4f27-8799-0b6d4a076cd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{267fc555-2c43-4431-8511-c1b4203e05ad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\vkovr">
+      <UniqueIdentifier>{e4e3e244-c045-4c98-8373-e6a9ed94c586}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\vkovr">
+      <UniqueIdentifier>{26eca066-1d03-4af2-b8ae-7dd085287ac0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\vkovr\vkovr.hpp">
+      <Filter>include\vkovr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\vkovr\session.h">
+      <Filter>include\vkovr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\vkovr\swapchain.h">
+      <Filter>include\vkovr</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\vkovr\session.cc">
+      <Filter>src\vkovr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr\vkovr.cc">
+      <Filter>src\vkovr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr\swapchain.cc">
+      <Filter>src\vkovr</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{d595fd5a-f4bc-44d6-ba19-8d6081d13754}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\engine">
+      <UniqueIdentifier>{6b6754bc-518c-419f-992f-d6096e427f2d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\shader">
+      <UniqueIdentifier>{bbf4d370-8b7d-4f05-8b9c-74fdee50c3e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\engine\ubo">
+      <UniqueIdentifier>{ef2d6d96-2b57-4933-9aa6-f3ccb6a68a0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\scene">
+      <UniqueIdentifier>{114a10d6-4ee0-4a67-b760-0faeda11a494}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\vkovr-demo\application.cc">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\main.cc">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\engine.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\memory_pool.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\framebuffer.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\swapchain.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\renderer.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\scene\camera.cc">
+      <Filter>src\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\scene\camera_control.cc">
+      <Filter>src\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\scene\mesh.cc">
+      <Filter>src\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\render_pass.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\pipeline_layout.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\descriptor_set_layout.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\sampler.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vkovr-demo\engine\texture.cc">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\vkovr-demo\application.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\engine.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\memory_pool.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\framebuffer.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\swapchain.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\renderer.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\ubo\camera_ubo.h">
+      <Filter>src\engine\ubo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\ubo\light_ubo.h">
+      <Filter>src\engine\ubo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\scene\light.h">
+      <Filter>src\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\scene\camera.h">
+      <Filter>src\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\scene\camera_control.h">
+      <Filter>src\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\scene\mesh.h">
+      <Filter>src\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\render_pass.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\pipeline_layout.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\descriptor_set_layout.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\sampler.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vkovr-demo\engine\texture.h">
+      <Filter>src\engine</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\vkovr-demo\shader\compile_shader.py">
+      <Filter>src\shader</Filter>
+    </None>
+    <None Include="..\..\src\vkovr-demo\shader\mesh.frag">
+      <Filter>src\shader</Filter>
+    </None>
+    <None Include="..\..\src\vkovr-demo\shader\mesh.vert">
+      <Filter>src\shader</Filter>
+    </None>
+    <None Include="..\..\src\vkovr-demo\shader\light.glsl">
+      <Filter>src\shader</Filter>
+    </None>
+  </ItemGroup>
+</Project>
