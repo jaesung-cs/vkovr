@@ -15,6 +15,7 @@
 #include <vkovr-demo/engine/texture.h>
 #include <vkovr-demo/engine/sampler.h>
 #include <vkovr-demo/engine/ubo/light_ubo.h>
+#include <vkovr-demo/engine/vr_worker.h>
 #include <vkovr-demo/scene/mesh.h>
 
 struct GLFWwindow;
@@ -37,6 +38,9 @@ public:
 
   void updateCamera(const CameraUbo& camera);
   void updateLight(const LightUbo& light);
+
+  void startVr();
+  void terminateVr();
 
   void drawFrame();
 
@@ -88,6 +92,9 @@ private:
   // TODO: create renderer using same pipeline cache
   Renderer ovrRenderer_;
   LightUbo light_;
+
+  // Vr worker
+  VrWorker vrWorker_;
 
   // Instance
   vk::Instance instance_;

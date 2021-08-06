@@ -129,6 +129,9 @@ void Application::run()
 
   std::deque<Timestamp> deque;
 
+  // Start vr worker
+  engine_->startVr();
+
   int64_t recentSeconds = 0;
   const auto startTime = Clock::now();
   Timestamp previousTime = startTime;
@@ -170,6 +173,8 @@ void Application::run()
 
     previousTime = currentTime;
   }
+
+  engine_->terminateVr();
 }
 
 void Application::mouseButton(int button, int action, int mods, double x, double y)

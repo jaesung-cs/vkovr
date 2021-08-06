@@ -615,6 +615,16 @@ void Engine::updateLight(const LightUbo& light)
   renderer_.updateLight(light);
 }
 
+void Engine::startVr()
+{
+  vrWorker_.run();
+}
+
+void Engine::terminateVr()
+{
+  vrWorker_.terminate();
+}
+
 void Engine::drawFrame()
 {
   constexpr auto scale = 0.5f;
