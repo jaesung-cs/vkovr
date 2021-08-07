@@ -2,6 +2,7 @@
 #define VKOVR_DEMO_ENGINE_MEMORY_POOL_H_
 
 #include <array>
+#include <mutex>
 
 #include <vulkan/vulkan.hpp>
 
@@ -55,6 +56,7 @@ private:
   uint32_t hostIndex_ = 0;
   std::array<vk::DeviceMemory, 2> memories_;
   std::array<vk::DeviceSize, 2> offsets_ = { 0ull, 0ull };
+  std::vector<std::shared_ptr<std::mutex>> mutexes_;
 
   std::vector<MappedMemory> mappedMemories_;
 };

@@ -73,6 +73,8 @@ MemoryPool createMemoryPool(const MemoryPoolCreateInfo& createInfo)
 
 MemoryPool::MemoryPool()
 {
+  for (int i = 0; i < 2; i++)
+    mutexes_.emplace_back(std::make_shared<std::mutex>());
 }
 
 MemoryPool::~MemoryPool()
@@ -130,6 +132,8 @@ MemoryPool::Memory MemoryPool::allocateHostMemory(vk::Image image)
 
 MemoryPool::Memory MemoryPool::allocateMemory(int memoryIndex, const vk::MemoryRequirements& requirements)
 {
+  std::lock_guard<std::mutex> lock_guard{ *mutexes_[memoryIndex] };
+
   Memory memory;
   memory.memory = memories_[memoryIndex];
   memory.offset = align(offsets_[memoryIndex], requirements.alignment);
