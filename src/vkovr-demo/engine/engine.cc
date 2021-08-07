@@ -194,7 +194,7 @@ void Engine::createDevice()
   {
     if ((queueFamilyProperties[i].queueFlags & queueFlag) == queueFlag &&
       physicalDevice_.getSurfaceSupportKHR(i, surface_) &&
-      queueFamilyProperties[i].queueCount >= 2)
+      queueFamilyProperties[i].queueCount >= 3)
     {
       queueIndex_ = i;
       break;
@@ -638,7 +638,12 @@ void Engine::drawFrame()
 
   // Draw on window surface
   const auto frameIndex = frameIndex_ % 3;
-  device_.waitForFences(renderFinishedFences_[frameIndex], true, UINT64_MAX);
+  const auto result = device_.waitForFences(renderFinishedFences_[frameIndex], true, 0);
+  if (result == vk::Result::eTimeout)
+    return;
+  if (result != vk::Result::eSuccess)
+    throw std::runtime_error("Failed to wait for fence in drawFrame()");
+
   device_.resetFences(renderFinishedFences_[frameIndex]);
 
   const auto swapchain = swapchain_.getSwapchain();

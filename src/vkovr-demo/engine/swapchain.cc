@@ -28,7 +28,10 @@ Swapchain createSwapchain(const SwapchainCreateInfo& createInfo)
   for (auto availableMode : presentModes)
   {
     if (availableMode == vk::PresentModeKHR::eMailbox)
+    {
       presentMode = vk::PresentModeKHR::eMailbox;
+      break;
+    }
   }
 
   // Format
