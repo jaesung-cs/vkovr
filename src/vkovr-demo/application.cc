@@ -172,6 +172,9 @@ void Application::run()
     }
 
     previousTime = currentTime;
+
+    // TODO: need a short delay to remove flickering with two rendering thread. What is the best sleep duration?
+    std::this_thread::sleep_for(0.005s);
   }
 
   engine_->terminateVr();

@@ -59,7 +59,7 @@ void VrWorker::run(const VrWorkerRunInfo& runInfo)
   pTexture_ = runInfo.pTexture;
   pSampler_ = runInfo.pSampler;
 
-  thread_ = std::thread([=] {loop(); });
+  thread_ = std::thread([&] { loop(); });
 }
 
 void VrWorker::loop()
@@ -279,8 +279,8 @@ void VrWorker::loop()
         
         objectModel = objectModel * glm::mat4{ objectOrientation };
         objectModel[3][0] = ps.x;
-        objectModel[3][1] = ps.y + 1.f;
-        objectModel[3][2] = ps.z - 1.f + std::sin(animationTime * 2.f) * 0.5f;
+        objectModel[3][1] = ps.y + 2.f;
+        objectModel[3][2] = ps.z - 2.f + std::sin(animationTime * 2.f) * 1.f;
       }
 
       if (status.IsVisible)
@@ -340,8 +340,7 @@ void VrWorker::loop()
           static float animationTime = 0.f;
           animationTime += dt;
 
-          const auto color = 0.5f + std::sin(animationTime * 4.f) * 0.5f;
-          std::array<float, 4> clearColor = { 0.f, color, 0.f, 1.f };
+          std::array<float, 4> clearColor = { 0.75f, 0.75f, 0.75f, 1.f };
           std::vector<vk::ClearValue> clearValues = {
             vk::ClearColorValue{clearColor},
             vk::ClearDepthStencilValue{1.f, 0u},
@@ -366,9 +365,9 @@ void VrWorker::loop()
             renderer_.getDescriptorSets()[imageIndex * 2 + eye], {});
 
           auto copyModel = objectModel;
-          for (int i = 0; i < 5; i++)
+          for (int i = -5; i < 5; i++)
           {
-            for (int j = 0; j < 5; j++)
+            for (int j = 0; j < 10; j++)
             {
               copyModel[3].x = objectModel[3].x + i;
               copyModel[3].y = objectModel[3].y + j;
@@ -418,6 +417,9 @@ void VrWorker::loop()
     }
 
     previousTime = currentTime;
+
+    // TODO: need a short delay to remove flickering with two rendering thread. What is the best sleep duration?
+    std::this_thread::sleep_for(0.005s);
   }
 
   destroy();
