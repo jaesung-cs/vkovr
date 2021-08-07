@@ -72,6 +72,8 @@ Engine::Engine(GLFWwindow* window, uint32_t width, uint32_t height)
 
 Engine::~Engine()
 {
+  vrWorker_.terminate();
+
   device_.waitIdle();
 
   vrWorker_.join();
@@ -632,7 +634,7 @@ void Engine::drawFrame()
 
   const auto eyePoses = vrWorker_.getEyePoses();
   const glm::vec3 cameraPosition = (glm::vec3{ eyePoses[0][3] } + glm::vec3{ eyePoses[1][3] }) / 2.f;
-  objectModel[3] = glm::vec4{ cameraPosition, 1.f };
+  objectModel[3] = glm::vec4{ cameraPosition.x, cameraPosition.y + 1.f, cameraPosition.z, 1.f };
 
   // Draw on window surface
   const auto frameIndex = frameIndex_ % 3;
@@ -701,6 +703,7 @@ void Engine::drawFrame()
     scaledModel[1][1] = scaleLong;
     scaledModel[2][2] = scaleShort;
     scaledModel = eyePoses[i] * scaledModel;
+
     drawMesh(drawCommandBuffer, renderer_.getPipelineLayout(), scaledModel);
   }
 

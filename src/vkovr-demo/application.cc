@@ -166,7 +166,7 @@ void Application::run()
     if (seconds > recentSeconds)
     {
       const auto fps = deque.size();
-      std::cout << fps << std::endl;
+      std::cout << "Application: " << fps << std::endl;
 
       recentSeconds = seconds;
     }

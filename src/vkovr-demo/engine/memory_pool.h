@@ -58,6 +58,7 @@ private:
   std::array<vk::DeviceSize, 2> offsets_ = { 0ull, 0ull };
   std::vector<std::shared_ptr<std::mutex>> mutexes_;
 
+  std::shared_ptr<std::mutex> mappedMutex_;
   std::vector<MappedMemory> mappedMemories_;
 };
 

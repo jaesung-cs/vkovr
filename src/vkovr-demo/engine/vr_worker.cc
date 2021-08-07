@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <queue>
 
 #include <vkovr-demo/engine/engine.h>
 #include <vkovr-demo/engine/memory_pool.h>
@@ -94,8 +95,20 @@ void VrWorker::loop()
     .setPoolSizes(poolSizes);
   descriptorPool_ = device_.createDescriptorPool(descriptorPoolCreateInfo);
 
+  using namespace std::chrono_literals;
+  using Clock = std::chrono::high_resolution_clock;
+  using Duration = std::chrono::duration<double>;
+  using Timestamp = Clock::time_point;
+
+  std::deque<Timestamp> deque;
+  int64_t recentSeconds = 0;
+  const auto startTime = Clock::now();
+  Timestamp previousTime = startTime;
+
   while (!shouldTerminate_)
   {
+    const auto currentTime = Clock::now();
+
     constexpr auto scale = 0.5f;
     glm::mat4 objectModel{ 1.f };
     objectModel[0][0] = scale;
@@ -252,11 +265,14 @@ void VrWorker::loop()
 
         auto objectOrientation = engine_->getObjectOrientation();
 
-        glm::vec3 v = qs * glm::vec3{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f };
+        constexpr float rotationSpeed = 3.f;
+        glm::vec3 v = qs * glm::vec3{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f } * rotationSpeed;
         glm::vec3 z = qs * glm::vec3{ 0.f, 0.f, 1.f };
         glm::vec3 w{ glm::cross(z, v) };
         glm::quat dq = 0.5f * glm::quat{ 0.f, w } * objectOrientation;
         constexpr float dt = 1.f / 72.f; // TODO
+        static float animationTime = 0.f;
+        animationTime += dt;
         objectOrientation = glm::normalize(objectOrientation + dq * dt);
 
         engine_->setObjectOrientation(objectOrientation);
@@ -264,7 +280,7 @@ void VrWorker::loop()
         objectModel = objectModel * glm::mat4{ objectOrientation };
         objectModel[3][0] = ps.x;
         objectModel[3][1] = ps.y + 1.f;
-        objectModel[3][2] = ps.z;
+        objectModel[3][2] = ps.z - 1.f + std::sin(animationTime * 2.f) * 0.5f;
       }
 
       if (status.IsVisible)
@@ -320,7 +336,12 @@ void VrWorker::loop()
 
           vk::Rect2D renderArea{ {0u, 0u}, {extent.width, extent.height} };
 
-          std::array<float, 4> clearColor = { 0.75f, 0.75f, 0.75f, 1.f };
+          constexpr float dt = 1.f / 72.f; // TODO
+          static float animationTime = 0.f;
+          animationTime += dt;
+
+          const auto color = 0.5f + std::sin(animationTime * 4.f) * 0.5f;
+          std::array<float, 4> clearColor = { 0.f, color, 0.f, 1.f };
           std::vector<vk::ClearValue> clearValues = {
             vk::ClearColorValue{clearColor},
             vk::ClearDepthStencilValue{1.f, 0u},
@@ -344,7 +365,16 @@ void VrWorker::loop()
             renderer_.getPipelineLayout(), 0,
             renderer_.getDescriptorSets()[imageIndex * 2 + eye], {});
 
-          drawMesh(commandBuffer, renderer_.getPipelineLayout(), objectModel);
+          auto copyModel = objectModel;
+          for (int i = 0; i < 5; i++)
+          {
+            for (int j = 0; j < 5; j++)
+            {
+              copyModel[3].x = objectModel[3].x + i;
+              copyModel[3].y = objectModel[3].y + j;
+              drawMesh(commandBuffer, renderer_.getPipelineLayout(), copyModel);
+            }
+          }
 
           commandBuffer.endRenderPass();
         }
@@ -373,6 +403,21 @@ void VrWorker::loop()
       using namespace std::chrono_literals;
       std::this_thread::sleep_for(1s);
     }
+
+    while (!deque.empty() && deque.front() < currentTime - 1s)
+      deque.pop_front();
+    deque.push_back(currentTime);
+
+    const auto seconds = static_cast<int64_t>(Duration(Clock::now() - startTime).count());
+    if (seconds > recentSeconds)
+    {
+      const auto fps = deque.size();
+      std::cout << "VR worker: " << fps << std::endl;
+
+      recentSeconds = seconds;
+    }
+
+    previousTime = currentTime;
   }
 
   destroy();
