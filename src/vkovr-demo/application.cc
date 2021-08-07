@@ -129,6 +129,9 @@ void Application::run()
 
   std::deque<Timestamp> deque;
 
+  // Start vr worker
+  engine_->startVr();
+
   int64_t recentSeconds = 0;
   const auto startTime = Clock::now();
   Timestamp previousTime = startTime;
@@ -163,13 +166,18 @@ void Application::run()
     if (seconds > recentSeconds)
     {
       const auto fps = deque.size();
-      std::cout << fps << std::endl;
+      std::cout << "Application: " << fps << std::endl;
 
       recentSeconds = seconds;
     }
 
     previousTime = currentTime;
+
+    // TODO: need a short delay to remove flickering with two rendering thread. What is the best sleep duration?
+    std::this_thread::sleep_for(0.005s);
   }
+
+  engine_->terminateVr();
 }
 
 void Application::mouseButton(int button, int action, int mods, double x, double y)

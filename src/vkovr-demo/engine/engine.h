@@ -15,6 +15,7 @@
 #include <vkovr-demo/engine/texture.h>
 #include <vkovr-demo/engine/sampler.h>
 #include <vkovr-demo/engine/ubo/light_ubo.h>
+#include <vkovr-demo/engine/vr_worker.h>
 #include <vkovr-demo/scene/mesh.h>
 
 struct GLFWwindow;
@@ -37,6 +38,12 @@ public:
 
   void updateCamera(const CameraUbo& camera);
   void updateLight(const LightUbo& light);
+
+  glm::quat getObjectOrientation();
+  void setObjectOrientation(const glm::quat& objectOrientation);
+
+  void startVr();
+  void terminateVr();
 
   void drawFrame();
 
@@ -79,15 +86,8 @@ private:
   uint32_t width_ = 0;
   uint32_t height_ = 0;
 
-  // Ovr
-  vkovr::Session session_;
-  std::vector<vkovr::Swapchain> eyeSwapchains_;
-  std::vector<vk::CommandBuffer> ovrCommandBuffers_;
-  RenderPass ovrRenderPass_;
-  std::vector<Framebuffer> ovrFramebuffers_;
-  // TODO: create renderer using same pipeline cache
-  Renderer ovrRenderer_;
-  LightUbo light_;
+  // Vr worker
+  VrWorker vrWorker_;
 
   // Instance
   vk::Instance instance_;
@@ -99,6 +99,7 @@ private:
   vk::Device device_;
   uint32_t queueIndex_ = 0;
   vk::Queue queue_;
+  vk::Queue vrQueue_;
   vk::Queue presentQueue_;
 
   vk::DeviceSize ssboAlignment_ = 0;
@@ -126,6 +127,7 @@ private:
   uint32_t meshIndexCount_ = 0;
 
   // VR object orientation
+  std::mutex objectOrientationMutex_;
   glm::quat objectOrientation_{ 1.f, 0.f, 0.f, 0.f };
 
   // Texture

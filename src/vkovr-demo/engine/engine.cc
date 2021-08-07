@@ -54,7 +54,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 Engine::Engine(GLFWwindow* window, uint32_t width, uint32_t height)
-  : width_{ width }
+  : vrWorker_{ this }
+  , width_{ width }
   , height_{ height }
 {
   createInstance(window);
@@ -71,22 +72,11 @@ Engine::Engine(GLFWwindow* window, uint32_t width, uint32_t height)
 
 Engine::~Engine()
 {
+  vrWorker_.terminate();
+
   device_.waitIdle();
 
-  if (session_.opened())
-  {
-    for (auto& eyeSwapchain : eyeSwapchains_)
-      eyeSwapchain.destroy();
-    eyeSwapchains_.clear();
-
-    ovrRenderPass_.destroy();
-
-    for (auto& framebuffer : ovrFramebuffers_)
-      framebuffer.destroy();
-    ovrFramebuffers_.clear();
-
-    ovrRenderer_.destroy();
-  }
+  vrWorker_.join();
 
   destroySynchronizationObjects();
   destroyCommandBuffers();
@@ -98,9 +88,6 @@ Engine::~Engine()
   destroyResourcePools();
   destroyDevice();
   destroyInstance();
-
-  if (session_.opened())
-    session_.destroy();
 }
 
 void Engine::createInstance(GLFWwindow* window)
@@ -207,7 +194,7 @@ void Engine::createDevice()
   {
     if ((queueFamilyProperties[i].queueFlags & queueFlag) == queueFlag &&
       physicalDevice_.getSurfaceSupportKHR(i, surface_) &&
-      queueFamilyProperties[i].queueCount >= 2)
+      queueFamilyProperties[i].queueCount >= 3)
     {
       queueIndex_ = i;
       break;
@@ -215,7 +202,7 @@ void Engine::createDevice()
   }
 
   std::vector<float> queuePriorities = {
-    1.f, 1.f
+    1.f, 1.f, 1.f,
   };
   vk::DeviceQueueCreateInfo queueCreateInfo{ {},
     queueIndex_, queuePriorities
@@ -247,7 +234,8 @@ void Engine::createDevice()
   device_ = physicalDevice_.createDevice(deviceCreateInfo);
 
   queue_ = device_.getQueue(queueIndex_, 0);
-  presentQueue_ = device_.getQueue(queueIndex_, 1);
+  vrQueue_ = device_.getQueue(queueIndex_, 1);
+  presentQueue_ = device_.getQueue(queueIndex_, 2);
 }
 
 void Engine::destroyDevice()
@@ -548,9 +536,6 @@ void Engine::createCommandBuffers()
     .setCommandBufferCount(imageCount);
   drawCommandBuffers_ = device_.allocateCommandBuffers(commandBufferAllocateInfo);
 
-  // VR command buffers
-  ovrCommandBuffers_ = device_.allocateCommandBuffers(commandBufferAllocateInfo);
-
   // Transfer command buffer
   commandBufferAllocateInfo.setCommandBufferCount(1);
   transferCommandBuffer_ = device_.allocateCommandBuffers(commandBufferAllocateInfo)[0];
@@ -559,7 +544,6 @@ void Engine::createCommandBuffers()
 void Engine::destroyCommandBuffers()
 {
   drawCommandBuffers_.clear();
-  ovrCommandBuffers_.clear();
 }
 
 void Engine::createSynchronizationObjects()
@@ -611,8 +595,30 @@ void Engine::updateCamera(const CameraUbo& camera)
 
 void Engine::updateLight(const LightUbo& light)
 {
-  light_ = light;
+  vrWorker_.updateLight(light);
   renderer_.updateLight(light);
+}
+
+void Engine::startVr()
+{
+  VrWorkerRunInfo runInfo;
+  runInfo.instance = instance_;
+  runInfo.physicalDevice = physicalDevice_;
+  runInfo.device = device_;
+  runInfo.queue = vrQueue_;
+  runInfo.queueIndex = queueIndex_;
+  runInfo.pMemoryPool = &memoryPool_;
+  runInfo.meshBuffer = meshBuffer_;
+  runInfo.meshIndexCount = meshIndexCount_;
+  runInfo.meshIndexOffset = meshIndexOffset_;
+  runInfo.pTexture = &texture_;
+  runInfo.pSampler = &sampler_;
+  vrWorker_.run(runInfo);
+}
+
+void Engine::terminateVr()
+{
+  vrWorker_.terminate();
 }
 
 void Engine::drawFrame()
@@ -623,309 +629,21 @@ void Engine::drawFrame()
   objectModel[1][1] = scale;
   objectModel[2][2] = scale;
 
-  // Check ovr session
-  if (session_.opened() && session_.getStatus().ShouldQuit)
-  {
-    for (auto& eyeSwapchain : eyeSwapchains_)
-      eyeSwapchain.destroy();
-    eyeSwapchains_.clear();
+  const auto orientation = getObjectOrientation();
+  objectModel = objectModel * glm::mat4{ orientation };
 
-    ovrRenderPass_.destroy();
-
-    for (auto& framebuffer : ovrFramebuffers_)
-      framebuffer.destroy();
-    ovrFramebuffers_.clear();
-
-    ovrRenderer_.destroy();
-
-    session_.destroy();
-  }
-
-  // Create session if not opened
-  bool sessionCreated = false;
-  if (!session_.opened())
-  {
-    // TODO: try open ovr session in thread. It takes about 0.5s to receive response on failure
-    try
-    {
-      session_ = vkovr::createSession({});
-      sessionCreated = true;
-
-      // Check if physical device needs to be changed
-      const auto vrPhysicalDevice = session_.getPhysicalDevice(instance_);
-      if (vrPhysicalDevice != physicalDevice_)
-        throw std::runtime_error("VR device requires another GPU");
-
-      // OVR render pass
-      RenderPassCreateInfo renderPassCreateInfo;
-      renderPassCreateInfo.device = device_;
-      renderPassCreateInfo.format = vk::Format::eB8G8R8A8Srgb;
-      renderPassCreateInfo.samples = vk::SampleCountFlagBits::e4;
-      renderPassCreateInfo.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-      ovrRenderPass_ = engine::createRenderPass(renderPassCreateInfo);
-
-      // OVR swapchains, framebuffers and renderers
-      // TODO: use the same pipeline, bind different render pass
-      eyeSwapchains_.resize(ovrEye_Count);
-      ovrFramebuffers_.resize(ovrEye_Count);
-      for (const auto eye : { ovrEye_Left, ovrEye_Right })
-      {
-        vkovr::SwapchainCreateInfo swapchainCreateInfo;
-        swapchainCreateInfo.device = device_;
-        swapchainCreateInfo.eye = eye;
-        eyeSwapchains_[eye] = session_.createSwapchain(swapchainCreateInfo);
-
-        // Create framebuffers targeting swapchain images
-        const auto& extent = eyeSwapchains_[eye].getExtent();
-        FramebufferCreateInfo framebufferCreateInfo;
-        framebufferCreateInfo.device = device_;
-        framebufferCreateInfo.width = extent.width;
-        framebufferCreateInfo.height = extent.height;
-        framebufferCreateInfo.maxWidth = extent.width;
-        framebufferCreateInfo.maxHeight = extent.height;
-        framebufferCreateInfo.colorImageViews = eyeSwapchains_[eye].getColorImageViews();
-        framebufferCreateInfo.depthImageViews = eyeSwapchains_[eye].getDepthImageViews();
-        framebufferCreateInfo.pMemoryPool = &memoryPool_;
-        framebufferCreateInfo.pRenderPass = &ovrRenderPass_;
-        ovrFramebuffers_[eye] = engine::createFramebuffer(framebufferCreateInfo);
-      }
-
-      // OVR renderer
-      // TODO: swapchain image count from left eye
-      const auto imageCount = eyeSwapchains_[0].getColorImageViews().size();
-      RendererCreateInfo rendererCreateInfo;
-      rendererCreateInfo.device = device_;
-      rendererCreateInfo.physicalDevice = physicalDevice_;
-      rendererCreateInfo.pRenderPass = &ovrRenderPass_;
-      rendererCreateInfo.descriptorPool = descriptorPool_;
-      rendererCreateInfo.imageCount = imageCount * 2; // For left/right eye descriptor sets
-      rendererCreateInfo.textureImageView = texture_.getImageView();
-      rendererCreateInfo.sampler = sampler_;
-      rendererCreateInfo.pMemoryPool = &memoryPool_;
-      ovrRenderer_ = engine::createRenderer(rendererCreateInfo);
-
-      // Change swapchain image layout to transfer src
-      transferCommandBuffer_.reset();
-      transferCommandBuffer_.begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
-      for (auto& eyeSwapchain : eyeSwapchains_)
-      {
-        for (auto image : eyeSwapchain.getColorImages())
-        {
-          vk::ImageMemoryBarrier imageBarrier;
-          imageBarrier
-            .setSrcAccessMask({})
-            .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
-            .setOldLayout(vk::ImageLayout::eUndefined)
-            .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .setImage(image)
-            .setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
-          transferCommandBuffer_.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {},
-            {}, {}, imageBarrier);
-        }
-      }
-
-      // Change window swapchain image layout
-      for (auto image : swapchain_.getImages())
-      {
-        vk::ImageMemoryBarrier imageBarrier;
-        imageBarrier
-          .setSrcAccessMask({})
-          .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
-          .setOldLayout(vk::ImageLayout::eUndefined)
-          .setNewLayout(vk::ImageLayout::ePresentSrcKHR)
-          .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-          .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-          .setImage(image)
-          .setSubresourceRange({ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
-        transferCommandBuffer_.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {},
-          {}, {}, imageBarrier);
-      }
-
-      transferCommandBuffer_.end();
-
-      vk::SubmitInfo submitInfo;
-      submitInfo
-        .setCommandBuffers(transferCommandBuffer_);
-      queue_.submit(submitInfo);
-
-      session_.synchronizeWithQueue(queue_);
-    }
-    catch (const std::exception& e)
-    {
-      std::cerr << e.what() << std::endl;
-    }
-  }
-
-  uint32_t vrImageIndex = 0;
-  std::vector<glm::mat4> models(2, glm::mat4{ 1.f });
-  if (session_.opened())
-  {
-    session_.beginFrame();
-
-    // Y-up to Z-up
-    glm::mat4 coordinateSystem{ 0.f };
-    coordinateSystem[0][0] = 1.f;
-    coordinateSystem[1][2] = 1.f;
-    coordinateSystem[2][1] = -1.f;
-    coordinateSystem[3][3] = 1.f;
-
-    glm::quat coordinateSystemOrientation{ coordinateSystem };
-
-    const auto eyePoses = session_.getEyePoses();
-    for (int i = 0; i < 2; i++)
-    {
-      const auto& ovrQ = eyePoses[i].Orientation;
-      const auto& ovrP = eyePoses[i].Position;
-
-      glm::quat q{ ovrQ.w, ovrQ.x, ovrQ.y, ovrQ.z };
-      const glm::vec3 p{ ovrP.x, ovrP.y, ovrP.z };
-
-      models[i] = glm::mat3{ q };
-      models[i][3] = { p, 1.f };
-      models[i] = coordinateSystem * models[i];
-    }
-
-    const auto status = session_.getStatus();
-    if (status.HasInputFocus)
-    {
-      const auto input = session_.getInputState();
-
-      // Average eye quaternions
-      glm::quat qs{ 0.f, 0.f, 0.f, 0.f };
-      glm::vec3 ps{ 0.f, 0.f, 0.f };
-      for (const auto eye : { ovrEye_Left, ovrEye_Right })
-      {
-        const auto& ovrQuat = eyePoses[eye].Orientation;
-        glm::quat q{ ovrQuat.w, ovrQuat.x, ovrQuat.y, ovrQuat.z };
-        q = coordinateSystemOrientation * q;
-        qs += q;
-
-        const auto& ovrPosition = eyePoses[eye].Position;
-        glm::vec3 p{ ovrPosition.x, ovrPosition.y, ovrPosition.z };
-        p = coordinateSystem * glm::vec4{ p, 1.f };
-        ps += p;
-      }
-      qs = glm::normalize(qs);
-      ps = ps / 2.f;
-
-      glm::vec3 v = qs * glm::vec3{ input.Thumbstick[1].x, input.Thumbstick[1].y, 0.f };
-      glm::vec3 z = qs * glm::vec3{ 0.f, 0.f, 1.f };
-      glm::vec3 w{ glm::cross(z, v) };
-      glm::quat dq = 0.5f * glm::quat{ 0.f, w } * objectOrientation_;
-      constexpr float dt = 1.f / 72.f; // TODO
-      objectOrientation_ = glm::normalize(objectOrientation_ + dq * dt);
-
-      objectModel = objectModel * glm::mat4{ objectOrientation_ };
-      objectModel[3][0] = ps.x;
-      objectModel[3][1] = ps.y + 1.f;
-      objectModel[3][2] = ps.z;
-    }
-
-    if (status.IsVisible)
-    {
-      // Draw to vr device
-      const auto vrFrameIndex = session_.getFrameIndex() % 3;
-      auto& commandBuffer = ovrCommandBuffers_[vrFrameIndex];
-
-      commandBuffer.reset();
-      commandBuffer.begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
-
-      constexpr auto near = 0.2f;
-      constexpr auto far = 1000.f;
-      for (const auto eye : { ovrEye_Left, ovrEye_Right })
-      {
-        const auto imageIndex = eyeSwapchains_[eye].acquireNextImageIndex();
-        vrImageIndex = imageIndex;
-
-        auto projection = session_.getEyeProjection(eye, near, far);
-
-        CameraUbo camera;
-        for (int r = 0; r < 4; r++)
-        {
-          for (int c = 0; c < 4; c++)
-            camera.projection[c][r] = projection.M[r][c];
-        }
-
-        // Convert to Vulkan coordinate space
-        for (int c = 0; c < 4; c++)
-          camera.projection[c][1] *= -1.f;
-
-        const auto& ovrQuat = eyePoses[eye].Orientation;
-        glm::quat q{ ovrQuat.w, ovrQuat.x, ovrQuat.y, ovrQuat.z };
-        glm::mat3 rot{ q };
-
-        // -Z direction is the forward direction
-        const glm::vec3 forward = glm::mat3{ coordinateSystem } * -rot[2];
-        const glm::vec3 up = glm::mat3{ coordinateSystem } * rot[1];
-
-        const auto& eyePosition = eyePoses[eye].Position;
-        auto eyeVec = glm::vec3{ eyePosition.x, eyePosition.y, eyePosition.z };
-        camera.eye = glm::vec3{ coordinateSystem * glm::vec4{eyeVec, 1.f} };
-        camera.view = glm::lookAt(camera.eye, camera.eye + forward, up);
-
-        // Update uniforms
-        ovrRenderer_.updateCamera(camera);
-        ovrRenderer_.updateLight(light_);
-        ovrRenderer_.updateDescriptorSet(imageIndex * 2 + eye);
-
-        // Draw
-        const auto& eyeFramebuffer = ovrFramebuffers_[eye];
-        const auto& extent = eyeSwapchains_[eye].getExtent();
-
-        vk::Rect2D renderArea{ {0u, 0u}, {extent.width, extent.height} };
-
-        std::array<float, 4> clearColor = { 0.75f, 0.75f, 0.75f, 1.f };
-        std::vector<vk::ClearValue> clearValues = {
-          vk::ClearColorValue{clearColor},
-          vk::ClearDepthStencilValue{1.f, 0u},
-        };
-
-        vk::RenderPassBeginInfo renderPassBeginInfo;
-        renderPassBeginInfo
-          .setClearValues(clearValues)
-          .setRenderArea(renderArea)
-          .setRenderPass(ovrRenderPass_)
-          .setFramebuffer(eyeFramebuffer.getFramebuffers()[imageIndex]);
-        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, ovrRenderer_.getPipeline());
-
-        vk::Viewport viewport{ 0.f, 0.f, static_cast<float>(extent.width), static_cast<float>(extent.height), 0.f, 1.f };
-        commandBuffer.setViewport(0, viewport);
-        commandBuffer.setScissor(0, renderArea);
-
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-          ovrRenderer_.getPipelineLayout(), 0,
-          ovrRenderer_.getDescriptorSets()[imageIndex * 2 + eye], {});
-
-        drawMesh(commandBuffer, ovrRenderer_.getPipelineLayout(), objectModel);
-
-        commandBuffer.endRenderPass();
-      }
-
-      commandBuffer.end();
-
-      // Submit command buffers
-      vk::SubmitInfo submitInfo;
-      submitInfo
-        .setCommandBuffers(commandBuffer);
-      queue_.submit(submitInfo);
-
-      for (auto& eyeSwapchain : eyeSwapchains_)
-        eyeSwapchain.commit();
-    }
-
-    session_.endFrame(eyeSwapchains_);
-
-    if (status.ShouldRecenter)
-      session_.recenter();
-  }
+  const auto eyePoses = vrWorker_.getEyePoses();
+  const glm::vec3 cameraPosition = (glm::vec3{ eyePoses[0][3] } + glm::vec3{ eyePoses[1][3] }) / 2.f;
+  objectModel[3] = glm::vec4{ cameraPosition.x, cameraPosition.y + 1.f, cameraPosition.z, 1.f };
 
   // Draw on window surface
   const auto frameIndex = frameIndex_ % 3;
-  device_.waitForFences(renderFinishedFences_[frameIndex], true, UINT64_MAX);
+  const auto result = device_.waitForFences(renderFinishedFences_[frameIndex], true, 0);
+  if (result == vk::Result::eTimeout)
+    return;
+  if (result != vk::Result::eSuccess)
+    throw std::runtime_error("Failed to wait for fence in drawFrame()");
+
   device_.resetFences(renderFinishedFences_[frameIndex]);
 
   const auto swapchain = swapchain_.getSwapchain();
@@ -989,7 +707,8 @@ void Engine::drawFrame()
     scaledModel[0][0] = scaleLong;
     scaledModel[1][1] = scaleLong;
     scaledModel[2][2] = scaleShort;
-    scaledModel = models[i] * scaledModel;
+    scaledModel = eyePoses[i] * scaledModel;
+
     drawMesh(drawCommandBuffer, renderer_.getPipelineLayout(), scaledModel);
   }
 
@@ -1026,6 +745,18 @@ void Engine::drawFrame()
     throw std::runtime_error("Failed to present swapchain image");
 
   frameIndex_++;
+}
+
+glm::quat Engine::getObjectOrientation()
+{
+  std::lock_guard<std::mutex> guard{ objectOrientationMutex_ };
+  return objectOrientation_;
+}
+
+void Engine::setObjectOrientation(const glm::quat& objectOrientation)
+{
+  std::lock_guard<std::mutex> guard{ objectOrientationMutex_ };
+  objectOrientation_ = objectOrientation;
 }
 
 void Engine::drawMesh(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, const glm::mat4& model)

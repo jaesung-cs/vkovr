@@ -62,6 +62,7 @@ private:
   std::vector<ovrPosef> eyeRenderPoses_;
   ovrTimewarpProjectionDesc posTimewarpProjectionDesc_;
   double sensorSampleTime_ = 0.f;
+  double hmdFrameTiming_ = 0.f;
 };
 
 class SessionCreateInfo

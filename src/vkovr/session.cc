@@ -212,26 +212,12 @@ void Session::synchronizeWithQueue(vk::Queue queue)
 
 std::vector<ovrPosef> Session::getEyePoses()
 {
-  ovrEyeRenderDesc eyeRenderDescs[ovrEye_Count];
-  for (auto eye : { ovrEye_Left, ovrEye_Right })
-    eyeRenderDescs[eye] = ovr_GetRenderDesc(session_, eye, hmdDesc_.DefaultEyeFov[eye]);
-
-  ovrPosef hmdToEyePoses[ovrEye_Count] = {
-    eyeRenderDescs[ovrEye_Left].HmdToEyePose,
-    eyeRenderDescs[ovrEye_Right].HmdToEyePose
-  };
-  std::vector<ovrPosef> eyeRenderPoses(ovrEye_Count);
-  ovr_GetEyePoses(session_, frameIndex_, ovrTrue, hmdToEyePoses, &eyeRenderPoses[0], &sensorSampleTime_);
-
-  eyeRenderPoses_ = eyeRenderPoses;
-
-  return eyeRenderPoses;
+  return eyeRenderPoses_;
 }
 
 void Session::getTouchPoses()
 {
-  const auto hmdFrameTiming = ovr_GetPredictedDisplayTime(session_, frameIndex_);
-  const auto trackingState = ovr_GetTrackingState(session_, hmdFrameTiming, false);
+  const auto trackingState = ovr_GetTrackingState(session_, hmdFrameTiming_, false);
   const auto& p = trackingState.HandPoses[ovrHand_Left].ThePose.Position;
 
   const auto input = getInputState();
@@ -253,13 +239,23 @@ void Session::beginFrame()
   if (!OVR_SUCCESS(ovr_WaitToBeginFrame(session_, frameIndex_)))
     throw std::runtime_error("Failed to wait for begin ovr frame");
 
-  // TODO: predicted display time?
-  /*
-  HmdFrameTiming = ovr_GetPredictedDisplayTime(Session, frameIndex);
-  */
-
   if (!OVR_SUCCESS(ovr_BeginFrame(session_, frameIndex_)))
     throw std::runtime_error("Failed to begin ovr frame");
+
+  hmdFrameTiming_ = ovr_GetPredictedDisplayTime(session_, frameIndex_);
+
+  ovrEyeRenderDesc eyeRenderDescs[ovrEye_Count];
+  for (auto eye : { ovrEye_Left, ovrEye_Right })
+    eyeRenderDescs[eye] = ovr_GetRenderDesc(session_, eye, hmdDesc_.DefaultEyeFov[eye]);
+
+  ovrPosef hmdToEyePoses[ovrEye_Count] = {
+    eyeRenderDescs[ovrEye_Left].HmdToEyePose,
+    eyeRenderDescs[ovrEye_Right].HmdToEyePose
+  };
+  std::vector<ovrPosef> eyeRenderPoses(ovrEye_Count);
+  ovr_GetEyePoses(session_, frameIndex_, ovrTrue, hmdToEyePoses, &eyeRenderPoses[0], &sensorSampleTime_);
+
+  eyeRenderPoses_ = eyeRenderPoses;
 }
 
 void Session::endFrame(const std::vector<Swapchain>& swapchains)

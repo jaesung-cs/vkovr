@@ -173,6 +173,7 @@ python compile_shader.py
     <ClCompile Include="..\..\src\vkovr-demo\engine\sampler.cc" />
     <ClCompile Include="..\..\src\vkovr-demo\engine\swapchain.cc" />
     <ClCompile Include="..\..\src\vkovr-demo\engine\texture.cc" />
+    <ClCompile Include="..\..\src\vkovr-demo\engine\vr_worker.cc" />
     <ClCompile Include="..\..\src\vkovr-demo\main.cc" />
     <ClCompile Include="..\..\src\vkovr-demo\scene\camera.cc" />
     <ClCompile Include="..\..\src\vkovr-demo\scene\camera_control.cc" />
@@ -192,6 +193,7 @@ python compile_shader.py
     <ClInclude Include="..\..\src\vkovr-demo\engine\texture.h" />
     <ClInclude Include="..\..\src\vkovr-demo\engine\ubo\camera_ubo.h" />
     <ClInclude Include="..\..\src\vkovr-demo\engine\ubo\light_ubo.h" />
+    <ClInclude Include="..\..\src\vkovr-demo\engine\vr_worker.h" />
     <ClInclude Include="..\..\src\vkovr-demo\scene\camera.h" />
     <ClInclude Include="..\..\src\vkovr-demo\scene\camera_control.h" />
     <ClInclude Include="..\..\src\vkovr-demo\scene\light.h" />

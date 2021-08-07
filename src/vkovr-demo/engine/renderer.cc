@@ -238,7 +238,7 @@ Renderer createRenderer(const RendererCreateInfo& createInfo)
     .setDepthClampEnable(false)
     .setRasterizerDiscardEnable(false)
     .setPolygonMode(vk::PolygonMode::eFill)
-    .setCullMode(vk::CullModeFlagBits::eNone)
+    .setCullMode(vk::CullModeFlagBits::eBack)
     .setFrontFace(vk::FrontFace::eCounterClockwise)
     .setDepthBiasEnable(false)
     .setLineWidth(1.f);

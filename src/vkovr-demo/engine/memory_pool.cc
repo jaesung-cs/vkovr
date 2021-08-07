@@ -73,6 +73,10 @@ MemoryPool createMemoryPool(const MemoryPoolCreateInfo& createInfo)
 
 MemoryPool::MemoryPool()
 {
+  for (int i = 0; i < 2; i++)
+    mutexes_.emplace_back(std::make_shared<std::mutex>());
+
+  mappedMutex_ = std::make_shared<std::mutex>();
 }
 
 MemoryPool::~MemoryPool()
@@ -103,7 +107,10 @@ MemoryPool::MappedMemory MemoryPool::allocatePersistentlyMappedMemory(const vk::
   mappedMemory.size = requirements.size;
   mappedMemory.map = reinterpret_cast<uint8_t*>(device_.mapMemory(memory, 0, requirements.size));
 
-  mappedMemories_.push_back(mappedMemory);
+  {
+    std::lock_guard<std::mutex> guard{ *mappedMutex_ };
+    mappedMemories_.push_back(mappedMemory);
+  }
 
   return mappedMemory;
 }
@@ -130,6 +137,8 @@ MemoryPool::Memory MemoryPool::allocateHostMemory(vk::Image image)
 
 MemoryPool::Memory MemoryPool::allocateMemory(int memoryIndex, const vk::MemoryRequirements& requirements)
 {
+  std::lock_guard<std::mutex> lock_guard{ *mutexes_[memoryIndex] };
+
   Memory memory;
   memory.memory = memories_[memoryIndex];
   memory.offset = align(offsets_[memoryIndex], requirements.alignment);
