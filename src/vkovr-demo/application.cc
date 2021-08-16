@@ -59,7 +59,7 @@ Application::Application()
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-  window_ = glfwCreateWindow(width_, height_, "Superlucent", NULL, NULL);
+  window_ = glfwCreateWindow(width_, height_, "Vkovr Demo", NULL, NULL);
 
   constexpr int maxWidth = 1920;
   constexpr int maxHeight = 1080;
